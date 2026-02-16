@@ -92,27 +92,36 @@ def main():
             )
 
             # Regret probability model (hidden truth)
-            p = 0.10
-            if intent == "want":
-                p += 0.10
-            if late_night:
-                p += 0.06
-            if category in ["electronics", "fashion", "travel"]:
-                p += 0.05
-            if stress == "high":
-                p += 0.05
-            if mood == "low":
-                p += 0.04
 
-            p += 0.03 * (np.log(amount + 1.0) - 5.0)
+            is_impulse = 1 if category in [
+                "electronics", "fashion", "travel"] else 0
+            is_late = 1 if late_night else 0
+            is_want = 1 if intent == "want" else 0
+            is_high_stress = 1 if stress == "high" else 0
+            is_low_mood = 1 if mood == "low" else 0
 
-            # Keep p in a valid range before converting to log-odds
-            p = float(np.clip(p, 1e-4, 1 - 1e-4))
+            amount_signal = np.log(amount + 1.0)
 
-            logit = np.log(p / (1 - p)) + user_regret_bias
-            p = 1.0 / (1.0 + np.exp(-logit))
+            logit = (
+                -3.6
+                + 1.2 * is_want
+                + 0.9 * is_late
+                + 1.1 * is_impulse
+                + 0.8 * is_high_stress
+                + 0.7 * is_low_mood
+                + 0.35 * amount_signal
+                + user_regret_bias
+            )
 
-            regret = int(rng.random() < p)
+            logit += 1.2 * (is_late * is_impulse)
+            logit += 0.9 * (is_want * is_high_stress)
+
+            logit += rng.normal(0, 0.18)
+
+            logit = float(np.clip(logit, -20, 20))
+
+            p_regret = 1.0 / (1.0 + np.exp(-logit))
+            regret = int(rng.random() < p_regret)
 
             # Simulate missing labels
             if rng.random() < 0.08:

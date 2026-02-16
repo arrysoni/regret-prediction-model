@@ -1,5 +1,5 @@
 import pandas as pd
-
+import numpy as np
 from src.config import EPS
 
 
@@ -89,5 +89,47 @@ def add_user_spend_deviation_features(df: pd.DataFrame, eps: float = EPS) -> pd.
 
     out["amount_ratio_user_median"] = out["amount"] / \
         (out["user_amount_median_past"] + eps)
+
+    return out
+
+
+def add_behavioral_features(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+
+    if "intent" not in out.columns:
+        raise ValueError("intent column missing")
+    if "stress" not in out.columns:
+        raise ValueError("stress column missing")
+    if "mood" not in out.columns:
+        raise ValueError("mood column missing")
+    if "category" not in out.columns:
+        raise ValueError("category column missing")
+
+    out["is_want"] = (out["intent"] == "want").astype(int)
+    out["is_high_stress"] = (out["stress"] == "high").astype(int)
+    out["is_low_mood"] = (out["mood"] == "low").astype(int)
+
+    out["is_impulse_category"] = out["category"].isin(
+        ["electronics", "fashion", "travel"]
+    ).astype(int)
+
+    return out
+
+
+def add_interaction_features(df: pd.DataFrame, eps: float = EPS) -> pd.DataFrame:
+    out = df.copy()
+
+    if "amount" not in out.columns:
+        raise ValueError("amount column missing")
+
+    out["log_amount"] = np.log(out["amount"].astype(float) + eps)
+
+    if "is_want" in out.columns and "is_high_stress" in out.columns:
+        out["want_x_stress"] = (
+            out["is_want"] * out["is_high_stress"]).astype(int)
+
+    if "is_late_night" in out.columns and "is_impulse_category" in out.columns:
+        out["late_x_impulse"] = (
+            out["is_late_night"] * out["is_impulse_category"]).astype(int)
 
     return out
